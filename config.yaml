@@ -1,0 +1,11 @@
+# RoboSpatial Evaluation Configuration
+
+# Dataset paths
+datasets:
+  robospatial_home:
+    data_dir: "/path/to/robospatial-home"  # Root directory containing JSON files and images/ folder
+
+# Output configuration
+output:
+  output_dir: "./results"  # Full path to where results will be stored
+  # If not specified, a 'results' folder will be created in the current directory
