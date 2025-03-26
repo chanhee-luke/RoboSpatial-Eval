@@ -9,16 +9,17 @@ Authors: [Chan Hee Song](https://chanh.ee), [Valts Blukis](https://research.nvid
 This repository provides evaluation tools for RoboSpatial-Home, a spatial reasoning benchmark designed for robotics, augmented reality (AR), and related applications.
 
 
-## Requirements
-
-```
-pip install numpy tqdm pyyaml
-```
 
 ## Evaluation Guidelines
 
 We provide detailed instructions for evaluating your model on RoboSpatial-Home.
-You can either run a model through our interface or evaluate pre-generated results. See the examples below for both workflows.
+You can either run a model through our interface or evaluate pre-generated results. See the Usage section below for both workflows.
+
+### Requirements
+
+```
+pip install numpy tqdm pyyaml
+```
 
 ### Download & Preprocess Dataset
 You’ll need to download the dataset before running the evaluation.
@@ -119,29 +120,29 @@ For pre-generated results evaluation, `<model_name>` is replaced with `custom` i
 
 For dry runs, all output files are prefixed with `dry_run_`.
 
-## Supported Models
+### Supported Models
 
 For all models, please create a separate Python environment using each model's instructions.
 During our testing, we switch between  Python environment when evaluating different models.
 The inference code for all models is containerized to allow for isolated evaluation.
 
-### LLaVA-Next
+#### LLaVA-Next
 
 - `lmms-lab/llama3-llava-next-8b`
 
-### SpatialVLM
+#### SpatialVLM
 - `remyxai/SpaceMantis`
 
-### RoboPoint
+#### RoboPoint
 - `wentao-yuan/robopoint-v1-vicuna-v1.5-13b`
 
-### Qwen2-VL
+#### Qwen2-VL
 - `Qwen/Qwen2-VL-7B-Instruct`
 
-### Molmo
+#### Molmo
 - `allenai/Molmo-7B-D-0924`
 
-### GPT-4o
+#### GPT-4o
 - `export OPENAI_API_KEY=<Your API Key>`
 
 ## Contact
