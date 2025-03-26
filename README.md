@@ -15,19 +15,19 @@ This repository provides evaluation tools for RoboSpatial-Home, a spatial reason
 pip install numpy tqdm pyyaml
 ```
 
-# Evaluation Guidelines
+## Evaluation Guidelines
 
 We provide detailed instructions for evaluating your model on RoboSpatial-Home.
 You can either run a model through our interface or evaluate pre-generated results. See the examples below for both workflows.
 
-## Download & Preprocess Dataset
+### Download & Preprocess Dataset
 You’ll need to download the dataset before running the evaluation.
 We provide a script to make this easy, especially for debugging or if you’re not using the Hugging Face `datasets`.
 ```
 python download_benchmark.py [OUTPUT_FOLDER_PATH]
 ```
 
-## Set Dataset Path
+### Set Dataset Path
 Edit config.yaml to point to your local dataset directory and desired output folder:
 ```
 # Dataset paths
