@@ -110,6 +110,8 @@ The pre-generated results file should be a JSON file containing a list of QAs wi
 
 🚨 Important: The evaluation script matches each entry in your results file to the ground truth using a combination of the `question` and `img` fields. These two fields must exactly match the corresponding example in the dataset.
 
+⚠️ Note on point formatting: The evaluation code attempts to handle common variations in point representations, including cases where model responses contain a mix of text and coordinates. If the answer field includes additional text, the code uses regular expressions to extract only the coordinate points. That said, for best results, format your predictions as clean, Python-style tuples—just like in the benchmark annotations.
+
 ### Output
 
 Results are saved in the following locations:
