@@ -23,7 +23,7 @@ pip install numpy tqdm pyyaml
 
 ### Download & Preprocess Dataset
 You’ll need to download the dataset before running the evaluation.
-We provide a script to make this easy, especially for debugging or if you’re not using the Hugging Face `datasets`.
+We provide a script to make this easy, especially for debugging or if you’re not using the Hugging Face `datasets` library.
 ```
 python download_benchmark.py [OUTPUT_FOLDER_PATH]
 ```
