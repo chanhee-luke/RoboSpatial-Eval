@@ -51,13 +51,13 @@ If not provided, the dataset will be saved in a folder named `RoboSpatial-Home` 
 
 There are two ways to use this tool:
 
-### Run and evaluate a model
+### 1. Run and evaluate a model
 
 ```
 python main.py <MODEL_NAME> [MODEL_PATH] --config CONFIG_PATH [--dry-run]
 ```
 
-### Evaluate pre-generated results
+### 2. Evaluate pre-generated results
 
 ```
 python main.py --results RESULTS_FILE --config CONFIG_PATH [--dry-run]
