@@ -1,6 +1,6 @@
 # RoboSpatial: Teaching Spatial Understanding to 2D and 3D Vision-Language Models for Robotics
 
-[**🌐 Homepage**](https://chanh.ee/RoboSpatial/) | [**📖 arXiv**](https://arxiv.org/abs/2411.16537) | [**📂 RoboSpatial-Home**](https://huggingface.co/datasets/chanhee-luke/RoboSpatial-Home)
+[**🌐 Homepage**](https://chanh.ee/RoboSpatial/) | [**📖 arXiv**](https://arxiv.org/abs/2411.16537) | [**📂 Benchmark**](https://huggingface.co/datasets/chanhee-luke/RoboSpatial-Home)
 
 Authors: [Chan Hee Song](https://chanh.ee)<sup>1</sup>, [Valts Blukis](https://research.nvidia.com/person/valts-blukis)<sup>2</sup>, [Jonathan Tremblay](https://research.nvidia.com/person/jonathan-tremblay)<sup>2</sup>, [Stephen Tyree](https://research.nvidia.com/person/stephen-tyree)<sup>2</sup>, [Yu Su](https://ysu1989.github.io/)<sup>1</sup>, [Stan Birchfield](https://research.nvidia.com/person/stan-birchfield)<sup>2</sup>
 
