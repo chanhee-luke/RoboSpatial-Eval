@@ -110,9 +110,9 @@ The pre-generated results file should be a JSON file containing a list of QAs wi
 ]
 ```
 
-🚨 Important: The evaluation script matches each entry in your results file to the ground truth using a combination of the `question` and `img` fields. These two fields must exactly match the corresponding example in the dataset.
+🚨 **Important**: The evaluation script matches each entry in your results file to the ground truth using a combination of the `question` and `img` fields. These two fields must exactly match the corresponding example in the dataset.
 
-⚠️ Note on point formatting: The evaluation code attempts to handle common variations in point representations, including cases where model responses contain a mix of text and coordinates. If the answer field includes additional text, the code uses regular expressions to extract only the coordinate points. That said, for best results, format your predictions as clean, Python-style tuples—just like in the benchmark annotations.
+⚠️ **Note on point formatting**: The evaluation code attempts to handle common variations in point representations, including cases where model responses contain a mix of text and coordinates. If the answer field includes additional text, the code uses regular expressions to extract only the coordinate points. That said, for best results, format your predictions as clean, Python-style tuples—just like in the benchmark annotations.
 
 ### Output
 
@@ -126,8 +126,8 @@ For dry runs, all output files are prefixed with `dry_run_`.
 
 ### Supported Models
 
-For all models, please create a separate Python environment using each model's instructions.
-During our testing, we switch between  Python environment when evaluating different models.
+🚨 **Important**: For all models, please create a separate Python environment using each model's instructions.
+During our evaluation, we switch between Python environments when evaluating different models.
 The inference code for all models is containerized to allow for isolated evaluation.
 
 #### LLaVA-Next
