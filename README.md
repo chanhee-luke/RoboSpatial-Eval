@@ -1,14 +1,18 @@
 # RoboSpatial: Teaching Spatial Understanding to 2D and 3D Vision-Language Models for Robotics
 
-[**🌐 Homepage**](https://chanh.ee/RoboSpatial/) | [**📖 arXiv**](https://arxiv.org/abs/2411.16537) | [**📂 Benchmark**](https://huggingface.co/datasets/chanhee-luke/RoboSpatial-Home)
+[**🌐 Homepage**](https://chanh.ee/RoboSpatial/) | [**📖 arXiv**](https://arxiv.org/abs/2411.16537) | [**🛠️ Data Gen**](https://github.com/NVlabs/RoboSpatial) | [**📂 Benchmark**](https://huggingface.co/datasets/chanhee-luke/RoboSpatial-Home)
 
-Authors: [Chan Hee Song](https://chanh.ee)<sup>1</sup>, [Valts Blukis](https://research.nvidia.com/person/valts-blukis)<sup>2</sup>, [Jonathan Tremblay](https://research.nvidia.com/person/jonathan-tremblay)<sup>2</sup>, [Stephen Tyree](https://research.nvidia.com/person/stephen-tyree)<sup>2</sup>, [Yu Su](https://ysu1989.github.io/)<sup>1</sup>, [Stan Birchfield](https://research.nvidia.com/person/stan-birchfield)<sup>2</sup>
+**✨ CVPR 2025 (Oral) ✨**
+
+Authors: [Chan Hee Song](https://chanh.ee)<sup>1</sup>, [Valts Blukis](https://research.nvidia.com/person/valts-blukis)<sup>2</sup>, [Jonathan Tremblay](https://research.nvidia.com/person/jonathan-tremblay)<sup>2</sup>, [Stephen Tyree](https://research.nvidia.com/person/stephen-tyree)<sup>2</sup>, [Yu Su](https://ysu1989.github.io/)<sup>1</sup>, [Stan Birchfield](https://sbirchfield.github.io/)<sup>2</sup>
 
  <sup>1</sup> The Ohio State University  <sup>2</sup> NVIDIA
 
 ## Introduction
 
-This repository provides evaluation tools for RoboSpatial-Home, a spatial reasoning benchmark designed for robotics, augmented reality (AR), and related applications.
+This repository provides evaluation tools for RoboSpatial-Home, a spatial reasoning benchmark designed for robotics, augmented reality (AR), and related applications. 
+
+If you are looking for the data generation code, please check out our repository at [here](https://github.com/NVlabs/RoboSpatial).
 
 
 
