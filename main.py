@@ -7,15 +7,15 @@ import base64
 import random
 import numpy as np
 from tqdm import tqdm
-import yaml
 import argparse
 import re
 import ast
+import io
+from datasets import load_dataset, get_dataset_split_names
 
 # Import evaluation functions - these are always needed
 from evaluation import (
     eval_robospatial_home,
-    eval_pregenerated_results
 )
 
 # ------------------------------------------------------------------------
@@ -40,9 +40,9 @@ def import_model_modules(model_name):
     elif model_name.startswith("robopoint"):
         from models import load_robopoint_model, run_robopoint
         return load_robopoint_model, run_robopoint
-    elif model_name.startswith("qwen2vl"):
-        from models import load_qwen2vl_model, run_qwen2vl
-        return load_qwen2vl_model, run_qwen2vl
+    elif model_name.startswith("qwen25vl"):
+        from models import load_qwen25vl_model, run_qwen25vl
+        return load_qwen25vl_model, run_qwen25vl
     elif model_name.startswith("molmo"):
         from models import load_molmo_model, run_molmo
         return load_molmo_model, run_molmo
@@ -66,55 +66,60 @@ def load_model(model_name, model_path=None):
     load_func, _ = import_model_modules(model_name)
     return load_func(model_path)
 
-def run_model(question, image_path, model_name, model_kwargs):
+def run_model(question, image_input, model_name, model_kwargs):
     """
-    Generic helper: runs the specified model on a single (question, image).
+    Generic helper: runs the specified model on a single (question, image_input).
+    image_input can be a path (str) or an image object (e.g., PIL.Image).
     Returns the string answer from the model.
     """
-    if not os.path.exists(image_path):
-        # Just a warning if the path doesn't exist
-        print(f"[WARNING] Image path not found: {image_path}")
-
     # Access the correct run function for this model
     _, run_func = import_model_modules(model_name)
-    
-    if model_name.startswith("gpt"):
-        # For GPT-based models, typically pass base64
-        image_base64 = encode_image(image_path)
-        answer = run_func(question, image_base64)
-    else:
-        answer = run_func(question, image_path, model_kwargs)
-        
-    return answer
 
-def load_config(config_path):
-    """
-    Load configuration from YAML file.
-    Raises an error if the file doesn't exist or is improperly formatted.
-    """
-    if not config_path or not os.path.exists(config_path):
-        raise FileNotFoundError(f"Config file '{config_path}' not found. A valid config file is required.")
-    
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-    
-    # Verify required configuration elements
-    if "datasets" not in config:
-        raise ValueError("Config file missing 'datasets' section")
-    if "robospatial_home" not in config["datasets"]:
-        raise ValueError("Config file missing 'robospatial_home' section in 'datasets'")
-    if "data_dir" not in config["datasets"]["robospatial_home"]:
-        raise ValueError("Config file missing 'data_dir' for robospatial_home")
-    
-    # Set defaults for output configuration
-    if "output" not in config or config["output"] is None:
-        config["output"] = {}
-    
-    # If output_dir is specified, use it, otherwise default to 'results' in current directory
-    if "output_dir" not in config["output"]:
-        config["output"]["output_dir"] = os.path.join(os.getcwd(), "results")
-    
-    return config
+    if model_name.startswith("gpt"):
+        # For GPT-based models, encode the image to base64
+        image_base64 = None
+        if isinstance(image_input, str): # Check if it's a path
+            if not os.path.exists(image_input):
+                print(f"[WARNING] Image path not found: {image_input}")
+            else:
+                try:
+                    image_base64 = encode_image(image_input)
+                except Exception as e:
+                    print(f"[WARNING] Failed to encode image path {image_input}: {e}")
+        else: # Assume it's an image object (e.g., PIL)
+            try:
+                # Assuming image_input is a PIL Image
+                from PIL import Image
+                import io
+                if isinstance(image_input, Image.Image):
+                    buffer = io.BytesIO()
+                    # Preserve original format if possible, otherwise use PNG/JPEG
+                    img_format = image_input.format if image_input.format else 'PNG'
+                    if img_format.upper() == 'WEBP': # Handle cases like WEBP which might not be universally supported
+                        print("[INFO] Converting WEBP image to PNG for GPT.")
+                        img_format = 'PNG'
+                    image_input.save(buffer, format=img_format)
+                    image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                else:
+                    print(f"[WARNING] Unsupported image object type for GPT: {type(image_input)}. Skipping encoding.")
+            except Exception as e:
+                print(f"[WARNING] Failed to encode image object to base64: {e}")
+
+        if image_base64:
+            answer = run_func(question, image_base64)
+        else:
+            answer = "Error processing image for GPT." # Default error message
+    else:
+        # For other models, pass the image path or object directly
+        # Ensure the specific run_func can handle the image object if it's not a path
+        if isinstance(image_input, str) and not os.path.exists(image_input):
+             print(f"[WARNING] Image path not found: {image_input}")
+             # Let the specific run_func handle the missing path or return an error message
+        
+        # The specific run_func (e.g., run_llava_next) must be able to handle the image_input type
+        answer = run_func(question, image_input, model_kwargs)
+
+    return answer
 
 # ------------------------------------------------------------------------
 # 3) Main Script
@@ -122,226 +127,204 @@ def load_config(config_path):
 def main():
     """
     Usage:
-        python main.py <MODEL_NAME> [MODEL_PATH] --config CONFIG_PATH [--dry-run]
-        python main.py --results RESULTS_FILE --config CONFIG_PATH [--dry-run]
+        python main.py --model-name <MODEL_NAME> [--model-path MODEL_PATH] \\
+                       [--dataset-name DATASET_NAME] [--split SPLIT_NAME | 'all'] \\
+                       [--question-col QUESTION_COL] [--answer-col ANSWER_COL] \\
+                       [--image-col IMAGE_COL] [--output-dir OUTPUT_DIR] [--dry-run]
 
     Required arguments:
-        - --config CONFIG_PATH: Path to YAML config file with dataset paths
-        
-    Either specify a model to run:
-        - MODEL_NAME: Name of the model to use for evaluation
-        - [MODEL_PATH]: Optional path to model weights if not using default
-        
-    Or specify pre-generated results:
-        - --results RESULTS_FILE: Path to pre-generated results file in the same format as the benchmark data
+        - --model-name MODEL_NAME: Name of the model to use for evaluation
 
     Optional arguments:
-        - --dry-run: Only evaluate the first 3 examples from each JSON file
+        - --model-path MODEL_PATH: Optional path to model weights if not using default
+        - --dataset-name DATASET_NAME: Hugging Face dataset name (default: chanhee-luke/RoboSpatial-Home)
+        - --split SPLIT_NAME | 'all': Dataset split(s) to evaluate (e.g., 'test', 'train', or 'all' for all available splits) (default: test)
+        - --question-col QUESTION_COL: Name of the question column (default: question)
+        - --answer-col ANSWER_COL: Name of the ground truth answer column (default: answer)
+        - --image-col IMAGE_COL: Name of the image column (default: img)
+        - --output-dir OUTPUT_DIR: Directory to save results (default: ./results)
+        - --dry-run: Only evaluate the first 3 examples per split
 
     Examples:
-        python main.py molmo /path/to/my/model --config config.yaml --dry-run
-        python main.py --results /path/to/results.json --config config.yaml
+        python main.py --model-name molmo --model-path /path/to/my/model --output-dir /path/to/results --dry-run
+        python main.py --model-name llava_next --dataset-name another/dataset --question-col prompt --answer-col gt_answer --image-col image_obj --split all
     """
     parser = argparse.ArgumentParser(description='RoboSpatial Evaluation Script')
-    
-    # Create a mutually exclusive group for either model or results
-    model_or_results = parser.add_mutually_exclusive_group()
-    model_or_results.add_argument('model_name', type=str, nargs='?', help='Name of the model to use')
-    model_or_results.add_argument('--results', type=str, help='Path to pre-generated results file')
-    
-    parser.add_argument('model_path', nargs='?', default=None, help='Optional path to model weights')
-    parser.add_argument('--config', type=str, required=True, help='Path to YAML config file')
-    parser.add_argument('--dry-run', action='store_true', help='Only evaluate the first 3 examples')
-    
+
+    # Model and Data Arguments
+    parser.add_argument('--model-name', type=str, required=True, help='Name of the model to use')
+    parser.add_argument('--model-path', nargs='?', default=None, help='Optional path to model weights')
+    parser.add_argument('--dataset-name', type=str, default='chanhee-luke/RoboSpatial-Home', help='Hugging Face dataset name')
+    parser.add_argument('--split', type=str, default='test', help='Dataset split(s) to evaluate (e.g., \'test\', \'train\', or \'all\' for all available splits)')
+    parser.add_argument('--question-col', type=str, default='question', help='Name of the question column')
+    parser.add_argument('--answer-col', type=str, default='answer', help='Name of the ground truth answer column')
+    parser.add_argument('--image-col', type=str, default='img', help='Name of the image column')
+
+    # Output and Control Arguments
+    parser.add_argument('--output-dir', type=str, default=os.path.join(os.getcwd(), "results"), help='Directory to save results')
+    parser.add_argument('--dry-run', action='store_true', help='Only evaluate the first 3 examples per split')
+
     args = parser.parse_args()
-    
-    dataset_type = "robospatial_home"  # Default to the only supported dataset
+
     model_name = args.model_name
     model_path = args.model_path
-    config_path = args.config
-    results_file = args.results
+    output_dir = args.output_dir
     dry_run = args.dry_run
+    requested_split = args.split
+    dataset_name = args.dataset_name
+    question_col = args.question_col
+    answer_col = args.answer_col
+    image_col = args.image_col
 
-    # Check if either model_name or results_file is provided
-    if not model_name and not results_file:
-        print("Error: Either a model name or --results must be provided.")
-        parser.print_help()
-        sys.exit(1)
-
-    # 2) Load configuration from YAML file
-    try:
-        config = load_config(config_path)
-        data_dir = config["datasets"]["robospatial_home"]["data_dir"]
-        output_dir = config["output"]["output_dir"]
-    except (FileNotFoundError, ValueError) as e:
-        print(f"Error loading configuration: {e}")
-        sys.exit(1)
-    
-    # Check if paths exist
-    if not os.path.exists(data_dir):
-        print(f"Error: Data directory '{data_dir}' not found")
-        sys.exit(1)
-
-    # 3) Where to save output
+    # 2) Configuration (Output directory)
     os.makedirs(output_dir, exist_ok=True)
     print(f"Results will be saved to: {output_dir}")
 
     # Prefix for file names if dry run is enabled
     file_prefix = "dry_run_" if dry_run else ""
 
-    # 4) Find all .json files in the data_dir (ground truth)
-    json_files = [f for f in os.listdir(data_dir) if f.endswith(".json")]
-    if not json_files:
-        print(f"No JSON files found in {data_dir}")
-        sys.exit(0)
-
-    # 5) If using pre-generated results, verify the results file exists
+    # 5) Load Model
     model_kwargs = None
-    if results_file:
-        if not os.path.exists(results_file):
-            print(f"Error: Results file '{results_file}' not found")
-            sys.exit(1)
-        try:
-            with open(results_file, "r") as f:
-                results_data = json.load(f)
-                if not isinstance(results_data, list):
-                    results_data = [results_data]
-        except json.JSONDecodeError:
-            print(f"Error: Results file '{results_file}' is not a valid JSON file")
-            sys.exit(1)
-    else:
-        # Load the model if not using pre-generated results
-        # Import torch-related modules only when actually running a model
-        import torch
-        # Set random seeds for reproducibility 
-        random.seed(56)
-        np.random.seed(56)
-        torch.manual_seed(56)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(56)
-            
-        print(f"Loading model '{model_name}' for RoboSpatial-Home evaluation...")
-        model_kwargs = load_model(model_name, model_path)
-        print("Model loaded successfully.")
 
-    all_stats = []
-    overall_category_stats = {}  # For aggregating per-category stats across files
+    # Load the model once
+    import torch
+    random.seed(56)
+    np.random.seed(56)
+    torch.manual_seed(56)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(56)
 
-    # 6) Evaluate each JSON file
-    for jf in tqdm(json_files, desc=f"Processing RoboSpatial-Home JSONs"):
-        file_path = os.path.join(data_dir, jf)
-        with open(file_path, "r") as f:
-            data = json.load(f)
+    print(f"Loading model '{model_name}'...")
+    model_kwargs = load_model(model_name, model_path)
+    print("Model loaded successfully.")
 
-        # If data is a single dict, make it a list
-        if not isinstance(data, list):
-            data = [data]
-
-        # If dry run is enabled, only evaluate the first 3 examples
-        if dry_run:
-            print("Dry run enabled: Evaluating only the first 3 examples from this file.")
-            data = data[:3]
-
-        # Evaluate either using pre-generated results or by running the model
-        if results_file:
-            # Filter results data to only include entries for this file
-            file_results_data = [r for r in results_data if r.get("source_file", "") == jf]
-            
-            # If no source_file field is present, use all results
-            # The eval_pregenerated_results function will handle matching
-            if not file_results_data:
-                file_results_data = results_data
-                
-            stats = eval_pregenerated_results(data, file_results_data, data_dir)
+    # 6) Load Dataset Splits
+    datasets_to_evaluate = {}
+    try:
+        if requested_split.lower() == 'all':
+            print(f"Loading all available splits for dataset '{dataset_name}'...")
+            # Load the entire dataset dictionary
+            all_splits_dataset = load_dataset(dataset_name)
+            split_names = list(all_splits_dataset.keys())
+            print(f"Found splits: {', '.join(split_names)}")
+            datasets_to_evaluate = all_splits_dataset # Keep the dict
         else:
-            stats = eval_robospatial_home(data, model_name, model_kwargs, data_dir, run_model)
+            print(f"Loading dataset '{dataset_name}' split '{requested_split}'...")
+            dataset = load_dataset(dataset_name, split=requested_split)
+            datasets_to_evaluate = {requested_split: dataset} # Store single split in a dict for uniform processing
+            print("Dataset loaded successfully.")
+    except Exception as e:
+        print(f"Error loading dataset '{dataset_name}' from Hugging Face: {e}")
+        sys.exit(1)
 
-        # Save per-file results with the appropriate prefix
-        base_name = os.path.splitext(jf)[0]
-        result_name = f"{file_prefix}{base_name}_{'custom' if results_file else model_name}_results.json"
+    # 7) Evaluate each loaded dataset split
+    for current_split_name, current_dataset in datasets_to_evaluate.items():
+        print(f"--- Evaluating split: {current_split_name} ---")
+        overall_category_stats = {} # Reset for each split
+
+        # Convert dataset split to list of dicts
+        data_list = [entry for entry in current_dataset]
+
+        if not data_list:
+            print(f"Split '{current_split_name}' is empty or failed to load. Skipping.")
+            continue
+
+        # If dry run is enabled, only evaluate the first N examples
+        if dry_run:
+            limit = 3
+            print(f"Dry run enabled: Evaluating only the first {limit} examples for split '{current_split_name}'.")
+            data_list = data_list[:limit]
+
+        # Run evaluation for the current split
+        print(f"Starting evaluation for {len(data_list)} examples from split '{current_split_name}'...")
+        stats = eval_robospatial_home(
+            data_list,
+            model_name,
+            model_kwargs,
+            run_model,
+            question_col=question_col,
+            answer_col=answer_col,
+            image_col=image_col
+        )
+
+        # --- Process and Save Results for the current split ---
+        if 'results' not in stats:
+            print(f"Error: Evaluation failed to produce results for split '{current_split_name}'.")
+            continue # Skip to the next split
+
+        # Save the detailed results for this split
+        sanitized_dataset_name = dataset_name.replace('/', '_')
+        # Include split name in the filename
+        result_name = f"{file_prefix}{sanitized_dataset_name}_{current_split_name}_{model_name}_results.json"
         out_file = os.path.join(output_dir, result_name)
         with open(out_file, "w") as outf:
             json.dump(stats["results"], outf, indent=2)
 
-        # Print file-level statistics
-        print(f"\n=== Stats for file '{jf}' ===")
+        # Print overall statistics for this split
+        print(f"=== Stats for {dataset_name} ({current_split_name} split) ===")
         print(f"  Accuracy: {stats['accuracy']:.2f}% ({stats['num_correct']}/{stats['num_total']})")
-        
-        # Print per-category accuracy for this file
-        print("  Per-category accuracy:")
-        for cat, cat_stats in stats["category_stats"].items():
-            acc = 100.0 * cat_stats["num_correct"] / cat_stats["num_total"] if cat_stats["num_total"] > 0 else 0.0
-            print(f"    {cat}: {acc:.2f}% ({cat_stats['num_correct']}/{cat_stats['num_total']})")
-            # Aggregate overall category stats
-            if cat not in overall_category_stats:
-                overall_category_stats[cat] = {"num_correct": 0, "num_total": 0}
-            overall_category_stats[cat]["num_correct"] += cat_stats["num_correct"]
-            overall_category_stats[cat]["num_total"] += cat_stats["num_total"]
-            
-        # Print diagnostic info for pre-generated results
-        if results_file and "unmatched_entries" in stats:
-            print(f"  Unmatched entries: {stats['unmatched_entries']}")
-            
-        print(f"  Illformed questions: {stats['illformed_questions']}")
-        print(f"  Illformed responses: {stats['illformed_responses']}")
-        print(f"  Detailed results saved to: {out_file}\n")
 
-        # Summarize for aggregation
-        summary_entry = {
-            "file": jf,
-            "accuracy": stats["accuracy"],
-            "num_correct": stats["num_correct"],
-            "num_total": stats["num_total"],
+        # Print per-category accuracy for this split
+        if "category_stats" in stats and stats["category_stats"]:
+            print("  Per-category accuracy:")
+            for cat, cat_stats in stats["category_stats"].items():
+                acc = 100.0 * cat_stats["num_correct"] / cat_stats["num_total"] if cat_stats["num_total"] > 0 else 0.0
+                print(f"    {cat}: {acc:.2f}% ({cat_stats['num_correct']}/{cat_stats['num_total']})")
+                # Aggregate overall category stats for this split (used in summary below)
+                overall_category_stats[cat] = cat_stats
+        else:
+            print("  No category statistics available for this split.")
+
+        # Print diagnostic info for this split
+        print(f"  Illformed questions (in source data): {stats['illformed_questions']}")
+        print(f"  Illformed responses (unparsable model outputs): {stats['illformed_responses']}")
+        print(f"  Detailed results for split '{current_split_name}' saved to: {out_file}")
+
+        # --- Aggregate and Save Summary for the current split ---
+        overall_correct = stats['num_correct']
+        overall_total = stats['num_total']
+        overall_acc = stats['accuracy']
+
+        aggregate_summary = {
+            "dataset_name": dataset_name,
+            "dataset_split": current_split_name, # Use current split name
+            "model_name": model_name,
+            "overall_accuracy": overall_acc,
+            "overall_correct": overall_correct,
+            "overall_total": overall_total,
+            "category_stats": {}, # Populate below
             "illformed_questions": stats["illformed_questions"],
             "illformed_responses": stats["illformed_responses"],
-            "category_stats": stats["category_stats"]
         }
-        if "unmatched_entries" in stats:
-            summary_entry["unmatched_entries"] = stats["unmatched_entries"]
 
-        all_stats.append(summary_entry)
+        # Add overall per-category statistics to summary for this split
+        for cat, cat_stats_details in overall_category_stats.items():
+            acc = 100.0 * cat_stats_details["num_correct"] / cat_stats_details["num_total"] if cat_stats_details["num_total"] > 0 else 0.0
+            aggregate_summary["category_stats"][cat] = {
+                "accuracy": acc,
+                "num_correct": cat_stats_details["num_correct"],
+                "num_total": cat_stats_details["num_total"]
+            }
 
-    # 7) Aggregate Stats across all files
-    overall_correct = sum(e["num_correct"] for e in all_stats)
-    overall_total = sum(e["num_total"] for e in all_stats)
-    overall_acc = 100.0 * overall_correct / overall_total if overall_total > 0 else 0
+        # Write the aggregate summary for this split
+        # Include split name in the filename
+        agg_file_name = f"{file_prefix}aggregate_{sanitized_dataset_name}_{current_split_name}_{model_name}.json"
+        agg_file = os.path.join(output_dir, agg_file_name)
+        with open(agg_file, "w") as af:
+            json.dump(aggregate_summary, af, indent=2)
 
-    model_identifier = 'custom' if results_file else model_name
-    
-    aggregate_summary = {
-        "dataset_type": dataset_type,
-        "model_name": model_identifier,
-        "overall_accuracy": overall_acc,
-        "overall_correct": overall_correct,
-        "overall_total": overall_total,
-        "file_summaries": all_stats,
-    }
-    
-    # Add overall per-category statistics
-    overall_cat_acc = {}
-    for cat, stats in overall_category_stats.items():
-        acc = 100.0 * stats["num_correct"] / stats["num_total"] if stats["num_total"] > 0 else 0.0
-        overall_cat_acc[cat] = {
-            "accuracy": acc,
-            "num_correct": stats["num_correct"],
-            "num_total": stats["num_total"]
-        }
-    aggregate_summary["category_stats"] = overall_cat_acc
+        # Print final summary for this split
+        print(f"--- AGGREGATE Results ({dataset_name} / {current_split_name} split) with model '{model_name}' ---")
+        print(f"Overall accuracy: {overall_acc:.2f}%  ({overall_correct}/{overall_total})")
+        if overall_category_stats:
+            print("Overall per-category accuracy:")
+            for cat, cat_stats_details in overall_category_stats.items():
+                acc = 100.0 * cat_stats_details["num_correct"] / cat_stats_details["num_total"] if cat_stats_details["num_total"] > 0 else 0.0
+                print(f"  {cat}: {acc:.2f}% ({cat_stats_details['num_correct']}/{cat_stats_details['num_total']})")
+        print(f"Aggregate summary for split '{current_split_name}' saved to: {agg_file}")
+        print("-" * (30 + len(current_split_name))) # Separator line
 
-    # Write the aggregate summary with the appropriate prefix
-    agg_file = os.path.join(output_dir, f"{file_prefix}aggregate_robospatial_home_{model_identifier}.json")
-    with open(agg_file, "w") as af:
-        json.dump(aggregate_summary, af, indent=2)
-
-    # Print final summary
-    print(f"\n=== ROBOSPATIAL-HOME Results with model '{model_identifier}' ===")
-    print(f"Overall accuracy: {overall_acc:.2f}%  ({overall_correct}/{overall_total})")
-    print("Overall per-category accuracy:")
-    for cat, cat_stats in overall_category_stats.items():
-        acc = 100.0 * cat_stats["num_correct"] / cat_stats["num_total"] if cat_stats["num_total"] > 0 else 0.0
-        print(f"  {cat}: {acc:.2f}% ({cat_stats['num_correct']}/{cat_stats['num_total']})")
-    print(f"Aggregate summary saved to: {agg_file}")
-
+    print("=== Evaluation Complete ===")
 
 if __name__ == "__main__":
     main()

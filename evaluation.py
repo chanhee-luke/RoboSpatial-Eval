@@ -8,6 +8,7 @@ import re
 import ast
 from tqdm import tqdm
 
+
 def point_in_polygon(x, y, poly):
     """
     Check if the point (x, y) lies within the polygon defined by a list of (x, y) tuples.
@@ -161,190 +162,126 @@ def evaluate_answer(ground_truth, generated_answer):
             print(f"Error evaluating answer: {e}")
             return False, is_binary, parsed_answer, is_parsable
 
-def eval_robospatial_home(json_data, model_name, model_kwargs, data_dir, run_model_fn):
+def eval_robospatial_home(
+        dataset_list,
+        model_name,
+        model_kwargs,
+        run_model_fn,
+        question_col="question",
+        answer_col="answer",
+        image_col="img"
+    ):
     """
-    Evaluate RoboSpatial-Home data by running the model on each example.
-    
+    Evaluate a dataset by running the model on each example.
+    Assumes data comes from Hugging Face dataset format.
+
     Args:
-        json_data: List of data entries to evaluate
-        model_name: Name of the model being evaluated
-        model_kwargs: Model-specific arguments (tokenizer, model object, etc.)
-        data_dir: Root directory containing dataset files and images
-        run_model_fn: Function to run the model on a single example
-        
+        dataset_list: List of data entries (dictionaries) to evaluate.
+        model_name: Name of the model being evaluated.
+        model_kwargs: Model-specific arguments (tokenizer, model object, etc.).
+        run_model_fn: Function to run the model on a single example.
+                      Expects (question, image_input, model_name, model_kwargs).
+        question_col: Name of the column containing the question/prompt.
+        answer_col: Name of the column containing the ground truth answer.
+        image_col: Name of the column containing the image object.
+
     Returns:
-        Dictionary containing evaluation statistics and results
+        Dictionary containing evaluation statistics and results.
     """
     results = []
     num_correct = 0
-    num_total = len(json_data)
+    num_total = len(dataset_list)
     illformed_questions = 0
     illformed_responses = 0
 
     # Dictionary to keep per-category statistics
+    # Initialize unconditionally, will be populated if categories exist or are inferred
     category_stats = {}
 
-    for entry in tqdm(json_data, desc="Evaluating RoboSpatial-Home"):
-        # Extract question and ground-truth answer directly from the entry
-        question = entry.get("question", "")
-        ground_truth = entry.get("answer", "")
-        
-        if not question or not ground_truth:
+    # Process one by one (original logic)
+    for entry in tqdm(dataset_list, desc=f"Evaluating {model_name} (HF Single)"):
+        # Extract question, ground-truth answer, and image using specified column names
+        question = entry.get(question_col, "")
+        ground_truth = entry.get(answer_col, "")
+        image_input = entry.get(image_col)
+
+        if not question or not ground_truth or image_input is None:
             illformed_questions += 1
+            # Try to get an ID if available, otherwise use index or hash
+            entry_id = entry.get('id') or entry.get('index') or hash(str(entry))
+            print(f"[Warning] Skipping entry {entry_id} due to missing required columns ('{question_col}', '{answer_col}', or '{image_col}')")
             continue
 
-        category = entry.get("category", "unknown")
-        if category not in category_stats:
-            category_stats[category] = {"num_correct": 0, "num_total": 0}
-        category_stats[category]["num_total"] += 1
+        # --- Category Determination ---
+        category = entry.get("category") # Check if category is provided
+        if category is None: # Infer category if not provided
+            gt_lower = ground_truth.strip().lower()
+            question_lower = question.strip().lower()
+            if gt_lower in ["yes", "no"]:
+                if "fit" in question_lower:
+                    category = "compatibility"
+                else:
+                    # Assume other binary questions are configuration based on user description
+                    category = "configuration"
+            else:
+                # Assume non-binary answers correspond to context questions (coordinates)
+                category = "context"
+        # --- End Category Determination ---
 
-        # Build absolute image path using the img field
-        image_rel_path = entry.get("img", "")
-        image_path = os.path.join(data_dir, image_rel_path)
 
-        # Run the model
-        generated_answer = run_model_fn(question, image_path, model_name, model_kwargs)
+        # Update category stats if category is determined
+        if category:
+            if category not in category_stats:
+                category_stats[category] = {"num_correct": 0, "num_total": 0}
+            # Update category total for valid entries only
+            category_stats[category]["num_total"] += 1
+
+        # Run the model with the image object (using the single-item function)
+        generated_answer = run_model_fn(question, image_input, model_name, model_kwargs)
 
         # Evaluate the answer
         correct, is_binary, parsed_answer, is_parsable = evaluate_answer(ground_truth, generated_answer)
-        
-        # Count illformed responses - now tracks any answer that couldn't be parsed correctly
+
+        # Count illformed responses
         if not is_parsable:
             illformed_responses += 1
 
         if correct:
             num_correct += 1
-            category_stats[category]["num_correct"] += 1
+            # Update category correct count if category exists and answer is correct
+            if category and category in category_stats:
+                category_stats[category]["num_correct"] += 1
 
-        results.append({
+        result_entry = {
             "question": question,
             "expected_answer": ground_truth,
             "generated_answer": generated_answer,
             "parsed_answer": str(parsed_answer) if parsed_answer is not None else None,
             "correct": correct,
             "is_parsable": is_parsable,
-            "category": category,
-            "image": image_path
-        })
+            # Include image filename if available
+            "image_filename": getattr(image_input, 'filename', None)
+        }
+        # Add category to result entry if it was determined
+        if category:
+             result_entry["category"] = category
+        results.append(result_entry)
 
-    accuracy = 100.0 * num_correct / num_total if num_total > 0 else 0.0
+    # Calculate final accuracy (using original total, adjusted for illformed questions)
+    actual_total_evaluated = num_total - illformed_questions
+    accuracy = 100.0 * num_correct / actual_total_evaluated if actual_total_evaluated > 0 else 0.0
 
-    return {
+    return_dict = {
         "accuracy": accuracy,
         "num_correct": num_correct,
-        "num_total": num_total,
+        "num_total": actual_total_evaluated, # Use the actual evaluated count as num_total
         "illformed_questions": illformed_questions,
         "illformed_responses": illformed_responses,
-        "category_stats": category_stats,
         "results": results
     }
+    # Include category_stats in the return dictionary if it's populated
+    if category_stats:
+        return_dict["category_stats"] = category_stats
 
-def eval_pregenerated_results(gt_data, results_data, data_dir):
-    """
-    Evaluate pre-generated results against ground truth.
-    
-    Args:
-        gt_data: List of ground truth data (from the benchmark)
-        results_data: List of pre-generated model responses
-        data_dir: Root directory containing dataset files and images
-        
-    Returns:
-        Dictionary of evaluation statistics
-    """
-    results = []
-    num_correct = 0
-    num_total = 0  # Will count only entries that can be evaluated
-    illformed_questions = 0
-    illformed_responses = 0
-    unmatched_entries = 0  # New counter for entries without matching results
-    
-    # Dictionary to keep per-category statistics
-    category_stats = {}
+    return return_dict
 
-    # Pre-process results_data for more efficient matching
-    # Build lookup dictionaries for faster matching
-    results_by_question_and_image = {}
-    
-    for result_entry in results_data:
-        question = result_entry.get("question", "")
-        img_path = result_entry.get("img", "")
-        
-        if question and img_path:
-            key = (question, img_path)
-            results_by_question_and_image[key] = result_entry
-
-    # Process ground truth entries
-    for gt_entry in tqdm(gt_data, desc="Evaluating Pre-generated Results"):
-        # Extract data from ground truth entry
-        question = gt_entry.get("question", "")
-        ground_truth = gt_entry.get("answer", "")
-        image_rel_path = gt_entry.get("img", "")
-        
-        if not question or not ground_truth:
-            illformed_questions += 1
-            continue
-
-        # Increment category stats
-        category = gt_entry.get("category", "unknown")
-        if category not in category_stats:
-            category_stats[category] = {"num_correct": 0, "num_total": 0}
-        
-        # Try to find a match in the pre-processed results
-        key = (question, image_rel_path)
-        matched_result = results_by_question_and_image.get(key)
-        
-        # If no match found, check if this is from a known source file
-        if matched_result is None:
-            # Count as unmatched rather than illformed
-            unmatched_entries += 1
-            continue
-        
-        # Only now do we count this entry toward the total and category
-        num_total += 1
-        category_stats[category]["num_total"] += 1
-        
-        # Extract generated answer
-        generated_answer = matched_result.get("answer", "")
-        
-        if not generated_answer:
-            illformed_responses += 1
-            continue
-
-        # Build absolute image path
-        image_path = os.path.join(data_dir, image_rel_path)
-
-        # Evaluate the answer
-        correct, is_binary, parsed_answer, is_parsable = evaluate_answer(ground_truth, generated_answer)
-        
-        # Count illformed responses - now tracks any answer that couldn't be parsed correctly
-        if not is_parsable:
-            illformed_responses += 1
-
-        if correct:
-            num_correct += 1
-            category_stats[category]["num_correct"] += 1
-
-        results.append({
-            "question": question,
-            "expected_answer": ground_truth,
-            "generated_answer": generated_answer,
-            "parsed_answer": str(parsed_answer) if parsed_answer is not None else None,
-            "correct": correct,
-            "is_parsable": is_parsable,
-            "category": category,
-            "image": image_path
-        })
-
-    # Calculate accuracy
-    accuracy = 100.0 * num_correct / num_total if num_total > 0 else 0.0
-
-    return {
-        "accuracy": accuracy,
-        "num_correct": num_correct,
-        "num_total": num_total,
-        "illformed_questions": illformed_questions,
-        "illformed_responses": illformed_responses,
-        "unmatched_entries": unmatched_entries,  # New field to track unmatched entries
-        "category_stats": category_stats,
-        "results": results
-    } 

@@ -107,13 +107,13 @@ def load_gpt_model():
     import openai
     return {}
 
-def load_qwen2vl_model(model_path=None):
+def load_qwen25vl_model(model_path=None):
     import torch
-    from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+    from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
     if model_path is None:
-        model_path = "Qwen/Qwen2-VL-7B-Instruct"
+        model_path = "Qwen/Qwen2.5-VL-7B-Instruct"
 
-    model = Qwen2VLForConditionalGeneration.from_pretrained(
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         model_path,
         torch_dtype=torch.bfloat16,
         device_map="auto",
@@ -324,39 +324,61 @@ def send_question_to_openai(question, image_base64):
     return response.output[0].content[0].text
 
 
-def run_qwen2vl(question, image_path, kwargs):
+def run_qwen25vl(question, image_input, kwargs):
     """
     Use the Qwen2-VL model to answer the question about the given image.
-    We'll build a 'messages' format, apply the chat template, and then generate.
+    Handles both PIL Image objects and file paths as image_input.
     """
     import torch
     from PIL import Image
+    import os
+    from qwen_vl_utils import process_vision_info
 
     model = kwargs["model"]
     processor = kwargs["processor"]
+    device = model.device
 
-    device = "cuda"  # or use model.device
+    pil_image = None
+    if isinstance(image_input, Image.Image):
+        pil_image = image_input.convert("RGB")
+    elif isinstance(image_input, str):
+        if os.path.exists(image_input):
+            pil_image = Image.open(image_input).convert("RGB")
+        else:
+            print(f"[Error] Image path does not exist: {image_input}")
+            return "Error: Image path not found."
+    else:
+        print(f"[Error] Unsupported image input type: {type(image_input)}")
+        return "Error: Unsupported image type."
 
     messages = [
         {
             "role": "user",
             "content": [
-                {"type": "image", "image": image_path},
+                {"type": "image", "image": pil_image},
                 {"type": "text", "text": question},
             ],
         }
     ]
 
-    pil_image = Image.open(image_path).convert("RGB")
-    prompt = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = processor(images=pil_image, text=prompt, return_tensors="pt", padding=True).to(device)
+    text = processor.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    image_inputs, video_inputs = process_vision_info(messages)
+    inputs = processor(
+        text=[text],
+        images=image_inputs,
+        videos=video_inputs,
+        padding=True,
+        return_tensors="pt",
+    )
+    inputs = inputs.to(model.device)
 
-    with torch.no_grad():
-        output_ids = model.generate(**inputs, max_new_tokens=128)
-
-    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, output_ids)]
+    generated_ids = model.generate(**inputs, max_new_tokens=256)
+    generated_ids_trimmed = [
+        out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+    ]
     output_text = processor.batch_decode(
-        generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
-    )[0]
-
-    return output_text.strip()
+        generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+    )
+    return output_text[0]
