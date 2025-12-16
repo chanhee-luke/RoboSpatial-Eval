@@ -13,20 +13,15 @@ def point_in_polygon(x, y, poly):
     Check if the point (x, y) lies within the polygon defined by a list of (x, y) tuples.
     Uses the ray-casting algorithm.
     """
-    num = len(poly)
+    n = len(poly)
     inside = False
-    p1x, p1y = poly[0]
-    for i in range(1, num + 1):
-        p2x, p2y = poly[i % num]
-        if y > min(p1y, p2y):
-            if y <= max(p1y, p2y):
-                if p1y != p2y:
-                    xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                else:
-                    xinters = p1x
-                if p1x == p2x or x <= xinters:
-                    inside = not inside
-        p1x, p1y = p2x, p2y
+    j = n - 1
+    for i in range(n):
+        xi, yi = poly[i]
+        xj, yj = poly[j]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
     return inside
 
 def evaluate_answer(ground_truth, generated_answer):
