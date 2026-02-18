@@ -22,14 +22,15 @@ Benchmark your model against others using the evaluation in this repo. **Configu
 ### Existing works
 
 Baselines from published work (not part of the ERA challenge).
-If we’re missing any results, or if you have new results to share, please email us or open a GitHub issue. We’ll add your method to the leaderboard.
+
+> If we’re missing any results, or if you have new results to share, please email us or open a GitHub issue. We’ll add your method to the leaderboard.
 
 #### API-based models (Gemini, GPT)
 
 | Model | Configuration (VQA) | Compatibility (VQA) | **VQA avg** | Context (pointing) | **Total** |
 |-------|---------------------|----------------------|--------------|---------------------|-----------|
 | **GPT-4o** | 74.0 | 55.2 | 64.6 | 6.6 | 45.3 |
-| **Gemini 1.5 ER** | — | — | 31.1 | 79.3 | 47.2 |
+| **[Gemini 1.5 ER](https://arxiv.org/abs/2510.03342)** | — | — | 31.1 | 79.3 | 47.2 |
 | **Gemini 2.5 Pro** | — | — | 71.3 | 8.3 | 50.3 |
 | **GPT-5-mini** | — | — | 70.7 | 12.5 | 51.3 |
 | **Gemini 2.5 Flash** | — | — | 73.4 | 7.9 | 51.6 |
@@ -39,13 +40,13 @@ If we’re missing any results, or if you have new results to share, please emai
 
 | Model | Configuration (VQA) | Compatibility (VQA) | **VQA avg** | Context (pointing) | **Total** |
 |-------|---------------------|----------------------|--------------|---------------------|-----------|
-| **RoboPoint-13B** | 69.9 | 70.5 | 70.2 | 19.7| 47.3 |
-| **Qwen3-VL 2B Instruct** | — | — | — | — | 49.1 |
-| **RoboBrain2.0-7B** | — | — | 59.64 | 44.35 | 54.5 |
-| **RoboRefer-8B-SFT** | — | — | 58.33 | 61.48 | 59.4 |
-| **SpaceTools-3B** | — | — | 79.38 | 52.46 | 70.4 |
-| **RoboBrain2.5-8B** | — | — | — | — | 73.0 |
-| **Qwen3-VL 235B-A22B Thinking** | — | — | — | — | 73.9 |
+| **[RoboPoint-13B](https://robo-point.github.io)** | 69.9 | 70.5 | 70.2 | 19.7| 47.3 |
+| **[Qwen3-VL 2B Instruct](https://arxiv.org/abs/2511.21631)** | — | — | — | — | 49.1 |
+| **[RoboBrain2.0-7B](https://arxiv.org/abs/2507.02029)** | — | — | 59.64 | 44.35 | 54.5 |
+| **[RoboRefer-8B-SFT](https://zhoues.github.io/RoboRefer/)** | — | — | 58.33 | 61.48 | 59.4 |
+| **[SpaceTools-3B](http://spacetools.github.io)** | — | — | 79.38 | 52.46 | 70.4 |
+| **[RoboBrain2.5-8B](https://superrobobrain.github.io)** | — | — | — | — | 73.0 |
+| **[Qwen3-VL 235B-A22B Thinking](https://arxiv.org/abs/2511.21631)** | — | — | — | — | 73.9 |
 
 
 ### Challenge
