@@ -22,6 +22,7 @@ Benchmark your model against others using the evaluation in this repo. **Configu
 ### Existing works
 
 Baselines from published work (not part of the ERA challenge).
+If we’re missing any results, or if you have new results to share, please email us or open a GitHub issue. We’ll add your method to the leaderboard.
 
 #### API-based models (Gemini, GPT)
 
