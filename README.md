@@ -8,9 +8,58 @@ Authors: [Chan Hee Song](https://chanh.ee)<sup>1</sup>, [Valts Blukis](https://r
 
  <sup>1</sup> The Ohio State University  <sup>2</sup> NVIDIA
 
+### ERA Workshop & Challenge
+
+**RoboSpatial-Home is one of two challenges in the [Embodied Reasoning in Action (ERA) Workshop and Challenge](https://embodied-reasoning.github.io) on Embodied Reasoning for Robotics (CVPR 2026): the RoboSpatial challenge (this repo) and the PointArena challenge.**
+
+- **Challenge instructions (participation, submission, rules):** See the **[RoboSpatial Challenge Instruction](https://docs.google.com/document/d/1Y1wivo8B_8OpHgP9x99IUsdpIyOMENNRtLmzM7ByZfU/edit?usp=sharing)** document for the full challenge, including how to submit your model.
+- **Adding a model to this codebase (local evaluation):** See **[ADDING_MODELS.md](ADDING_MODELS.md)** for step-by-step instructions on how to add and run your model in this repo.
+
+## Leaderboard
+
+Benchmark your model against others using the evaluation in this repo. **Configuration** and **Compatibility** are VQA (visual question answering) categories; **Context** is pointing. Scores include a **VQA average** (average of Configuration and Compatibility) and an **overall total** (average of all three categories).
+
+### Existing works
+
+Baselines from published work (not part of the ERA challenge).
+
+#### API-based models (Gemini, GPT)
+
+| Model | Configuration (VQA) | Compatibility (VQA) | **VQA avg** | Context (pointing) | **Total** |
+|-------|---------------------|----------------------|--------------|---------------------|-----------|
+| **GPT-4o** | 74.0 | 55.2 | 64.6 | 6.6 | 45.3 |
+| **Gemini 1.5 ER** | — | — | 31.1 | 79.3 | 47.2 |
+| **Gemini 2.5 Pro** | — | — | 71.3 | 8.3 | 50.3 |
+| **GPT-5-mini** | — | — | 70.7 | 12.5 | 51.3 |
+| **Gemini 2.5 Flash** | — | — | 73.4 | 7.9 | 51.6 |
+| **GPT-5** | — | — | 69.3 | 19.0 | 52.5 |
+
+#### Open-weight models
+
+| Model | Configuration (VQA) | Compatibility (VQA) | **VQA avg** | Context (pointing) | **Total** |
+|-------|---------------------|----------------------|--------------|---------------------|-----------|
+| **RoboPoint-13B** | 69.9 | 70.5 | 70.2 | 19.7| 47.3 |
+| **Qwen3-VL 2B Instruct** | — | — | — | — | 49.1 |
+| **RoboBrain2.0-7B** | — | — | 59.64 | 44.35 | 54.5 |
+| **RoboRefer-8B-SFT** | — | — | 58.33 | 61.48 | 59.4 |
+| **SpaceTools-3B** | — | — | 79.38 | 52.46 | 70.4 |
+| **RoboBrain2.5-8B** | — | — | - | - | 73.0 |
+| **Qwen3-VL 235B-A22B Thinking** | — | — | — | — | 73.9 |
+
+
+### Challenge
+
+ERA workshop participants: submit your results to appear here.
+
+| Rank | Model | Configuration (VQA) | Compatibility (VQA) | **VQA avg** | Context (pointing) | **Total** |
+|------|-------|---------------------|----------------------|--------------|---------------------|-----------|
+| *—* | *Submit your results!* | — | — | — | — | — |
+
+*For challenge participation and submission, see the [RoboSpatial Challenge Instruction](https://docs.google.com/document/d/1Y1wivo8B_8OpHgP9x99IUsdpIyOMENNRtLmzM7ByZfU/edit?usp=sharing). To add your model to this codebase for local evaluation, see [ADDING_MODELS.md](ADDING_MODELS.md).*
+
 ## Introduction
 
-This repository provides evaluation tools for RoboSpatial-Home, a spatial reasoning benchmark designed for robotics, augmented reality (AR), and related applications. 
+This repository provides evaluation tools for **RoboSpatial-Home**, a spatial reasoning benchmark designed for robotics, augmented reality (AR), and related applications. RoboSpatial-Home is the **RoboSpatial challenge** in the CVPR 2026 ERA Workshop; the other is the **PointArena challenge**. Full details for both are in the [challenge instructions](https://docs.google.com/document/d/1Y1wivo8B_8OpHgP9x99IUsdpIyOMENNRtLmzM7ByZfU/edit?usp=sharing).
 
 If you are looking for the data generation code, please check out our repository at [here](https://github.com/NVlabs/RoboSpatial).
 
@@ -130,6 +179,8 @@ For dry runs, all output files are prefixed with `dry_run_`.
 
 ### Supported Models
 
+To add a new model to this codebase (for local evaluation), see **[ADDING_MODELS.md](ADDING_MODELS.md)** for step-by-step instructions. For ERA challenge participation and submission, see the [RoboSpatial Challenge Instruction](https://docs.google.com/document/d/1Y1wivo8B_8OpHgP9x99IUsdpIyOMENNRtLmzM7ByZfU/edit?usp=sharing).
+
 🚨 **Important**: For all models, please create a separate Python environment using each model's instructions.
 During our evaluation, we switch between Python environments when evaluating different models.
 The inference code for all models is containerized to allow for isolated evaluation.
@@ -165,6 +216,6 @@ The inference code for all models is containerized to allow for isolated evaluat
   title     = {{RoboSpatial}: Teaching Spatial Understanding to {2D} and {3D} Vision-Language Models for Robotics},
   booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   year      = {2025},
-  note      = {To appear},
+  note      = {Oral Presentation},
 }
 ```
