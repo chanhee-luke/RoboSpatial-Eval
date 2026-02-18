@@ -8,7 +8,7 @@ Authors: [Chan Hee Song](https://chanh.ee)<sup>1</sup>, [Valts Blukis](https://r
 
  <sup>1</sup> The Ohio State University  <sup>2</sup> NVIDIA
 
-### ERA Workshop & Challenge
+### CVPR 2026 ERA Workshop & Challenge
 
 **RoboSpatial-Home is one of two challenges in the [Embodied Reasoning in Action (ERA) Workshop and Challenge](https://embodied-reasoning.github.io) on Embodied Reasoning for Robotics (CVPR 2026): the RoboSpatial challenge (this repo) and the PointArena challenge.**
 
