@@ -205,7 +205,7 @@ The inference code for all models is containerized to allow for isolated evaluat
 - `export OPENAI_API_KEY=<Your API Key>`
 
 ## Contact
-- Luke Song: song.1855@osu.edu
+- Luke Song: chanhee.luke@gmail.com
 
 ## Citation
 
