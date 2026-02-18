@@ -43,7 +43,7 @@ Baselines from published work (not part of the ERA challenge).
 | **RoboBrain2.0-7B** | — | — | 59.64 | 44.35 | 54.5 |
 | **RoboRefer-8B-SFT** | — | — | 58.33 | 61.48 | 59.4 |
 | **SpaceTools-3B** | — | — | 79.38 | 52.46 | 70.4 |
-| **RoboBrain2.5-8B** | — | — | - | - | 73.0 |
+| **RoboBrain2.5-8B** | — | — | — | — | 73.0 |
 | **Qwen3-VL 235B-A22B Thinking** | — | — | — | — | 73.9 |
 
 
