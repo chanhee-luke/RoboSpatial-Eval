@@ -84,7 +84,12 @@ def evaluate_answer(ground_truth, generated_answer):
             for point in gt_polygon:
                 if not isinstance(point, (list, tuple)) or len(point) != 2:
                     return False, is_binary, parsed_answer, is_parsable
-                normalized_polygon.append((float(point[0]), float(point[1])))
+                try:
+                    normalized_point = (float(point[0]), float(point[1]))
+                except (ValueError, TypeError):
+                    # Ground truth contains non-numeric values; treat as not parsable without logging
+                    return False, is_binary, parsed_answer, is_parsable
+                normalized_polygon.append(normalized_point)
 
             gt_polygon = _convex_hull(normalized_polygon)
             if len(gt_polygon) < 3:
