@@ -24,6 +24,32 @@ def point_in_polygon(x, y, poly):
         j = i
     return inside
 
+def _convex_hull(points):
+    """
+    Compute the convex hull of a set of 2D points using the monotonic chain algorithm.
+    Returns hull vertices in counter-clockwise order.
+    """
+    unique_points = sorted(set(points))
+    if len(unique_points) <= 1:
+        return unique_points
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower = []
+    for p in unique_points:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+
+    upper = []
+    for p in reversed(unique_points):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+
+    return lower[:-1] + upper[:-1]
+
 def evaluate_answer(ground_truth, generated_answer):
     """
     Evaluates if the generated answer is correct based on the ground truth.
@@ -52,6 +78,16 @@ def evaluate_answer(ground_truth, generated_answer):
         try:
             gt_polygon = ast.literal_eval(ground_truth)
             if not isinstance(gt_polygon, list) or len(gt_polygon) < 3:
+                return False, is_binary, parsed_answer, is_parsable
+
+            normalized_polygon = []
+            for point in gt_polygon:
+                if not isinstance(point, (list, tuple)) or len(point) != 2:
+                    return False, is_binary, parsed_answer, is_parsable
+                normalized_polygon.append((float(point[0]), float(point[1])))
+
+            gt_polygon = _convex_hull(normalized_polygon)
+            if len(gt_polygon) < 3:
                 return False, is_binary, parsed_answer, is_parsable
             
             # Extract the first coordinate pair using regex
